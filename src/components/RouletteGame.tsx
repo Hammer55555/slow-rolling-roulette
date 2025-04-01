@@ -67,8 +67,6 @@ const RouletteGame: React.FC = () => {
     if (swiperRef.current && swiperRef.current.swiper) {
       swiperRef.current.swiper.setTranslate(-startPosition);
       
-      let totalDistance = 0;
-      
       // Animation function for smooth deceleration
       const animate = () => {
         if (!swiperRef.current || !swiperRef.current.swiper) return;
@@ -78,7 +76,6 @@ const RouletteGame: React.FC = () => {
         
         // Apply the current speed
         currentTranslate -= speed;
-        totalDistance += speed;
         
         // Handle looping - if we've moved too far, reset position while maintaining visual continuity
         const totalWidth = itemWidth * rouletteItems.length;
@@ -117,13 +114,22 @@ const RouletteGame: React.FC = () => {
     const itemWidth = getItemWidth(); // Get responsive item width
     
     // Calculate the current position in terms of items
-    const currentItem = Math.abs(currentTranslate) / itemWidth;
+    const currentPosition = Math.abs(currentTranslate);
     
-    // Calculate the nearest item position that would center an item
-    const nearestCenteredItem = Math.round(currentItem);
+    // Calculate the offset from perfect alignment with an item center
+    const itemIndex = currentPosition / itemWidth;
+    const fractionalPart = itemIndex - Math.floor(itemIndex);
     
-    // Calculate the exact translate value that would center this item
-    const targetTranslate = -(nearestCenteredItem * itemWidth);
+    // Calculate the target position that will center the nearest item
+    let targetTranslate;
+    
+    if (fractionalPart < 0.5) {
+      // Closer to previous item
+      targetTranslate = -(Math.floor(itemIndex) * itemWidth);
+    } else {
+      // Closer to next item
+      targetTranslate = -(Math.ceil(itemIndex) * itemWidth);
+    }
     
     // Smoothly animate to the centered position
     const startTranslate = currentTranslate;
@@ -183,12 +189,14 @@ const RouletteGame: React.FC = () => {
     };
   }, [animationId]);
 
-  // Initialize swiper with infinite loop settings
+  // Initialize swiper with centered settings
   useEffect(() => {
     if (swiperRef.current && swiperRef.current.swiper) {
       const swiper = swiperRef.current.swiper;
-      // Set initial position to the middle of the duplicated items
-      const initialPosition = -(rouletteItems.length * getItemWidth() * 2);
+      // Set initial position to ensure we start with proper centering
+      // Start at the middle of the duplicated items
+      const initialIndex = Math.floor(duplicatedItems.length / 2);
+      const initialPosition = -(initialIndex * getItemWidth());
       swiper.setTranslate(initialPosition);
     }
   }, [rouletteItems.length]);
@@ -226,7 +234,7 @@ const RouletteGame: React.FC = () => {
             spaceBetween={0}
             centeredSlides={true}
             allowTouchMove={false}
-            initialSlide={rouletteItems.length * 2} // Start from the middle set of items
+            initialSlide={Math.floor(duplicatedItems.length / 2)} // Start from the middle for proper centering
             className="roulette-swiper"
           >
             {duplicatedItems.map((item, index) => (
